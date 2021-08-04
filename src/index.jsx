@@ -26,7 +26,7 @@ const QueryType = new GraphQLObjectType({
     people: {
       type: new GraphQLList(PersonType),
       resolve: () => peopleData,
-    },
+    }
   },
 });
 
@@ -48,6 +48,16 @@ const MutationType = new GraphQLObjectType({
         return person;
       }
     },
+    removePerson: {
+      type: PersonType,
+      args: {
+        id: { type: GraphQLID },
+      },
+      resolve: function (_, { id }) {
+        peopleData.splice(peopleData.findIndex(person => person.id === id), 1);
+        return peopleData;
+      }
+    }
   },
 });
 
@@ -63,6 +73,7 @@ function delay(wait) {
 const link = new ApolloLink(operation => {
   return new Observable(async observer => {
     const { query, operationName, variables } = operation;
+    console.log(operationName);
     await delay(300);
     try {
       const result = await graphql(
@@ -112,6 +123,15 @@ const ADD_PERSON = gql`
   }
 `;
 
+const REMOVE_PERSON = gql`
+  mutation RemovePerson($id: ID) {
+    removePerson(id: $id) {
+      id
+      name
+    }
+  }
+`;
+
 function App() {
   const [name, setName] = useState('');
   const {
@@ -135,6 +155,8 @@ function App() {
       });
     },
   });
+
+  const [removePerson] = useMutation(REMOVE_PERSON, {refetchQueries: [{query: ALL_PEOPLE}]});
 
   return (
     <main>
@@ -165,7 +187,9 @@ function App() {
       ) : (
         <ul>
           {data?.people.map(person => (
-            <li key={person.id}>{person.name}</li>
+            <li key={person.id}>
+              {person.name} <button onClick={() => removePerson(person.id)}>Delete</button>
+            </li>
           ))}
         </ul>
       )}
